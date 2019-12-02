@@ -30,27 +30,32 @@ object MonoidSpec extends Properties("Monoids..") {
   // Exercise 4: test intAddition, intMultiplication, booleanOr,
   // booleanAnd and optionMonoid.
 
-  // property ...
-  // property ...
-  // property ...
-  // property ...
-  // property ...
-  // property ...
+  property ("intAddition is a monoid") = monoid (intAddition)
+  property ("intMultiplication is a monoid") = monoid (intMultiplication)
+  property ("booleanOr is a monoid") = monoid (booleanOr)
+  property ("booleanAnd is a monoid") = monoid (booleanAnd)
+  property ("optionMonoid is a monoid") = monoid (optionMonoid[Int])
 
   // Exercise 5
+  // Write scalacheck tests that test whether a function is a homomorphism between two sets.
 
-  // def homomorphism[A :Arbitrary,B :Arbitrary]
-  //  (ma: Monoid[A]) (f: A => B) (mb: Monoid[B]) =
+  def homomorphism[A :Arbitrary, B :Arbitrary]
+    (ma: Monoid[A]) (f: A => B) (mb: Monoid[B]) :Prop =
+      forAll { (x: A, y: A) => f(ma.op(x, y)) == mb.op(f(x), f(y)) } :| "homomorphism"
 
-  // def isomorphism[A :Arbitrary, B :Arbitrary] ...
+  def isomorphism[A :Arbitrary, B :Arbitrary]
+    (ma: Monoid[A]) (f: A => B) (g: B => A) (mb: Monoid[B]) :Prop =
+      homomorphism(ma)(f)(mb) && homomorphism(mb)(g)(ma) :| "isomorphism"
 
-  // property ("stringMonoid and listMonoid[Char] are isomorphic") = ...
+  property ("stringMonoid and listMonoid[Char] are isomorphic") =
+    isomorphism(stringMonoid)(_.toList)(_.mkString)(listMonoid[Char])
 
   // Exercise 6
 
-  // property ("booleanOr and booleanAnd are isomorphic") =
+  property ("booleanOr and booleanAnd are isomorphic") =
+    isomorphism(booleanOr)(! _)(! _)(booleanAnd)
 
   // Exercise 7 (the testing part)
 
-  // property ("productMonoid is a monoid") =
+  property ("productMonoid is a monoid") = monoid(productMonoid(optionMonoid[Int])(listMonoid[String]))
 }

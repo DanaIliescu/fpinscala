@@ -37,10 +37,10 @@ object  MonadSpec extends Properties("Monad[F[_]] laws..") {
     associative[A,F] (m) && identity[A,F] (m)
 
   // uncomment when you have optionMonad
-  // property ("of optionMonad") = monad[Int,Option] (optionMonad)
+  property ("of optionMonad") = monad[Int,Option] (optionMonad)
 
   // Now test more monads:
-
-  // property ...
+  property ("of listMonad over ints") = monad[Int,List] (listMonad)
+  property ("of listMonad over strings") = monad[String,List] (listMonad)
 
 }

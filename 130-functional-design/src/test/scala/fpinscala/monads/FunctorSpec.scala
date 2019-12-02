@@ -21,8 +21,9 @@ object FunctorSpec extends Properties("Functor[F[_]] properties..") {
     mapLaw[Int,List](ListFunctor)
 
   // Exercise 11 (for OptionFunctor)
-
-  // property ...
+  // Now use the law to test that OptionFunctor over character strings is a functor.
+  property ("Functor[Option[String]] satisfies the functor law") =
+    mapLaw[String, Option](OptionFunctor)
 }
 
 
