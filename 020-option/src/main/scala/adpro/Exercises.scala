@@ -34,8 +34,13 @@ package adpro
 trait OrderedPoint extends scala.math.Ordered[java.awt.Point] {
 
   this: java.awt.Point =>
-
-  override def compare (that: java.awt.Point): Int =  ???
+  // Implement the missing method compare from Ordered[Point], using the lexicographic ordering,
+  // i.e. (x, y) < (x,y) iff x<x o rx=x ∧ y<y.
+  override def compare (that: java.awt.Point): Int = {
+    if (this.x < that.x || (this.x == that.x && this.y < that.y)) -1
+    else if (this.x == that.x && this.y == that.y) 0
+    else 1
+  }
 
 }
 
@@ -52,34 +57,58 @@ case class Leaf[A] (value: A) extends Tree[A]
 case class Branch[A] (left: Tree[A], right: Tree[A]) extends Tree[A]
 
 object Tree {
-
-  def size[A] (t :Tree[A]): Int = ???
+  // Write a function size that counts nodes (leaves and branches) in a tree.
+  def size[A] (t :Tree[A]): Int =
+    t match {
+      case Branch(left, right) => size(left) + size(right) + 1
+      case Leaf(value) => 1
+    }
 
   // Exercise 3 (3.26)
-
-  def maximum (t: Tree[Int]): Int = ???
+  // Write a function maximum that returns the maximum element in a Tree[Int].
+  def maximum (t: Tree[Int]): Int = {
+    def go(m: Int): Int =
+      t match {
+        case Branch(left, right) => maximum(left) max maximum(right)
+        case Leaf(value) => value max m
+      }
+    go(-2147483648)
+  }
 
   // Exercise 4 (3.28)
-
-  def map[A,B] (t: Tree[A]) (f: A => B): Tree[B] = ???
+  // Write a function map, analogous to the function of the same name on List.
+  def map[A,B] (t: Tree[A]) (f: A => B): Tree[B] =
+    t match {
+      case Branch(left, right) => Branch(map(left)(f), map(right)(f))
+      case Leaf(value) => Leaf(f(value))
+    }
 
   // Exercise 5 (3.29)
+  // Generalize size, maximum, and map, writing a new function fold that abstracts over their similarities.
+  // Reimplement them.
+  def fold[A,B] (t: Tree[A]) (f: (B,B) => B) (g: A => B): B =
+    t match {
+      case Branch(left, right) => f(fold(left)(f)(g), fold(right)(f)(g))
+      case Leaf(value) => g(value)
+    }
 
-  def fold[A,B] (t: Tree[A]) (f: (B,B) => B) (g: A => B): B = ???
+  def size1[A] (t: Tree[A]): Int = fold(t)((acc:Int, curr:Int) => acc + curr + 1)(_ => 1)
 
-  def size1[A] (t: Tree[A]): Int = ???
+  def maximum1[A] (t: Tree[Int]): Int = fold(t)((acc:Int, curr:Int) => acc max curr)((a:Int) => a)
 
-  def maximum1[A] (t: Tree[Int]): Int = ???
-
-  def map1[A,B] (t: Tree[A]) (f: A=>B): Tree[B] = ???
+  def map1[A,B] (t: Tree[A]) (f: A=>B): Tree[B] =
+    fold(t)((acc: Tree[B], curr: Tree[B]) => Branch(acc, curr): Tree[B])(a => Leaf(f(a)): Tree[B])
 
 }
 
 sealed trait Option[+A] {
 
   // Exercise 6 (4.1)
-
-  def map[B] (f: A=>B): Option[B] = ???
+  // Implement map, getOrElse, flatMap, filter on Option.
+  def map[A,B] (f: A=>B): Option[B] = this match {
+    case None => None
+    case Some(a: A) => Some(f(a))
+  }
 
   // You may Ignore the arrow in default's type below for the time being.
   // (it should work (almost) as if it was not there)
@@ -87,11 +116,20 @@ sealed trait Option[+A] {
   // So it is not evaluated in case of Some (the term is 'call-by-name' and we
   // should talk about this soon).
 
-  def getOrElse[B >: A] (default: => B): B = ???
+  def getOrElse[B >: A] (default: => B): B = this match {
+    case None => default
+    case Some(b) => b
+  }
 
-  def flatMap[B] (f: A=>Option[B]): Option[B] = ???
+  def flatMap[B] (f: A=>Option[B]): Option[B] = this match {
+    case None => None
+    case Some(a) => f(a)
+  }
 
-  def filter (p: A => Boolean): Option[A] = ???
+  def filter (p: A => Boolean): Option[A] = this match {
+    case None => None
+    case Some(a) => if (p(a)) this else None
+  }
 
 }
 
@@ -107,19 +145,30 @@ object ExercisesOption {
     else Some(xs.sum / xs.length)
 
   // Exercise 7 (4.2)
-
-  def variance (xs: Seq[Double]): Option[Double] = ???
+  // Implement the variance function in terms of flatMap.
+  def variance (xs: Seq[Double]): Option[Double] =
+    mean(xs) flatMap (m => mean(xs.map(x => math.pow(x - m, 2))))
 
   // Exercise 8 (4.3)
-
-  def map2[A,B,C] (ao: Option[A], bo: Option[B]) (f: (A,B) => C): Option[C] = ???
+  // Write a generic function map2 that combines two Option values using a binary function.
+  def map2[A,B,C] (ao: Option[A], bo: Option[B]) (f: (A,B) => C): Option[C] =
+    ao flatMap (a => bo map (b => f(a, b)))
 
   // Exercise 9 (4.4)
-
-  def sequence[A] (aos: List[Option[A]]): Option[List[A]] = ???
+  // Write a function sequence that combines a list of Options into one Option
+  // containing a list of all the Some values in the original list.
+  def sequence[A] (aos: List[Option[A]]): Option[List[A]] =
+    aos.foldRight[Option[List[A]]](Some(Nil))((o, acc) => map2(o, acc)( (a, b) => a :: b))
 
   // Exercise 10 (4.5)
+  // The function behaves like map executed sequentially on the list a, where the mapped function f can fail.
+  // If at least one application fails, then the entire computation of the mapping (traversal) fails.
+  def traverse[A,B] (as: List[A]) (f :A => Option[B]): Option[List[B]] =
+    sequence(as map (f))
 
-  def traverse[A,B] (as: List[A]) (f :A => Option[B]): Option[List[B]] = ???
+  //   def traverse[A,B] (as: List[A]) (f :A => Option[B]): Option[List[B]] = as match {
+  //       case Nil => Some(Nil)
+  //       case h::t => map2(f(h), traverse(t)(f))(_ :: _)
+  //     }
 
 }

@@ -33,25 +33,49 @@ object RNG {
   }
 
   // Exercise 1 (CB 6.1)
-
-  def nonNegativeInt (rng: RNG): (Int, RNG) = ???
+  // Write a function that uses RNG.nextInt to generate a random integer between 0 and Int.maxValue.
+  // Make sure to handle the corner case when nextInt returns Int.MinValue, which doesn’t have a non-negative counterpart.
+  def nonNegativeInt (rng: RNG): (Int, RNG) = {
+    val (i, rng2) = rng.nextInt
+    (if(i < 0) -(i + 1) else i, rng2)
+  }
 
   // Exercise 2 (CB 6.2)
-
-  def double (rng: RNG): (Double, RNG) = ???
+  // Write a function to generate a Double between 0 and 1, not including 1.
+  def double (rng: RNG): (Double, RNG) = {
+    val (i, rng2) = nonNegativeInt(rng)
+    (i / (Int.MaxValue.toDouble + 1), rng2)
+  }
 
   // Exercise 3 (CB 6.3)
+  // Write functions to generate an (Int, Double) pair and a (Double, Int) pair, where integers are non-negative.
+  def intDouble (rng: RNG): ((Int, Double), RNG) = {
+    val (i, rng2) = nonNegativeInt(rng)
+    val (d, rng3) = double(rng2)
+    ((i, d), rng3)
+  }
 
-  def intDouble (rng: RNG) = ???
-
-  def doubleInt (rng: RNG) = ???
+  def doubleInt (rng: RNG): ((Double, Int), RNG) = {
+    val (i, rng2) = nonNegativeInt(rng)
+    val (d, rng3) = double(rng2)
+    ((d, i), rng3)
+  }
 
   def boolean (rng: RNG): (Boolean, RNG) =
     rng.nextInt match { case (i,rng2) => (i%2==0,rng2) }
 
   // Exercise 4 (CB 6.4)
-
-  def ints(count: Int) (rng: RNG) = ???
+  // Write a function to generate a list of random integers.
+  def ints(count: Int) (rng: RNG): (List[Int], RNG) = {
+    def go(count: Int, rng: RNG, res: List[Int]): (List[Int], RNG) = {
+      if (count == 0) (res, rng)
+      else {
+        val (i, nextRNG) = rng.nextInt
+        go(count - 1, nextRNG, i :: res)
+      }
+    }
+    go(count, rng, List())
+  }
 
   // There is something terribly repetitive about passing the RNG along
   // every time. What could we do to eliminate some of this duplication
@@ -74,12 +98,16 @@ object RNG {
 
   // Exercise 5 (CB 6.5) (Lazy is added so that the class does not fail
   // at load-time without your implementation).
-
-  lazy val _double: Rand[Double] = ???
+  // Use map to reimplement double in a more elegant way.
+  lazy val _double: Rand[Double] = map(nonNegativeInt)(i => i / (Int.MaxValue.toDouble + 1))
 
   // Exercise 6 (CB 6.6)
-
-  def map2[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = ???
+  // Write the implementation of map2 based on the following signature.
+  def map2[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = rng => {
+    val (a, ra2) = ra(rng)
+    val (b, rb2) = rb(ra2)
+    (f(a,b), rb2)
+  }
 
   // this is given in the book
 
@@ -91,16 +119,25 @@ object RNG {
   lazy val randDoubleInt: Rand[(Double, Int)] = both(double, int)
 
   // Exercise 7 (6.7)
+  // Implement sequence for combining a List of transitions into a single transition.
+  // Use it to reimplement the ints function you wrote before.
+  def sequence[A](fs: List[Rand[A]]): Rand[List[A]] =
+    fs.foldRight(unit(List[A]()))((a, acc) => map2(a,acc)(_::_))
 
-  def sequence[A](fs: List[Rand[A]]): Rand[List[A]] = ???
-
-  def _ints(count: Int): Rand[List[Int]] = ???
+  def _ints(count: Int): Rand[List[Int]] = sequence(List.fill(count)(int))
 
   // Exercise 8 (6.8)
+  // Implement flatMap, and then use it to implement nonNegativeLessThan.
+  def flatMap[A,B](f: Rand[A])(g: A => Rand[B]): Rand[B] = rng => {
+    val (f2, rng2) = f(rng)
+    g(f2)(rng2)
+  }
 
-  def flatMap[A,B](f: Rand[A])(g: A => Rand[B]): Rand[B] = ???
-
-  def nonNegativeLessThan(n: Int): Rand[Int] = ???
+  def nonNegativeLessThan(n: Int): Rand[Int] =
+    flatMap(nonNegativeInt){ i =>
+      val mod = i % n
+      if (i + (n-1) - mod >= 0) unit(mod) else nonNegativeLessThan(n)
+    }
 
 }
 
@@ -109,12 +146,16 @@ import State._
 case class State[S, +A](run: S => (A, S)) {
 
   // Exercise 9 (6.10)
+  // Generalize the functions unit, map, map2, flatMap, and sequence.
+  def map[B](f: A => B): State[S, B] = flatMap(a => unit(f(a)))
 
-  def map[B](f: A => B): State[S, B] = ???
+  def map2[B,C](sb: State[S, B])(f: (A, B) => C): State[S, C] =
+    flatMap(a => sb.map(b => f(a, b)))
 
-  def map2[B,C](sb: State[S, B])(f: (A, B) => C): State[S, C] = ???
-
-  def flatMap[B](f: A => State[S, B]): State[S, B] = ???
+  def flatMap[B](f: A => State[S, B]): State[S, B] = State(s => {
+    val (a, s2) = run(s)
+    f(a).run(s2)
+  })
 
 }
 
@@ -126,7 +167,8 @@ object State {
 
   // Exercise 9 (6.10) continued
 
-  def sequence[S,A](sas: List[State[S, A]]): State[S, List[A]] = ???
+  def sequence[S,A](sas: List[State[S, A]]): State[S, List[A]] =
+    sas.foldRight(unit[S, List[A]](List[A]()))((a, acc) => a.map2(acc)(_::_))
 
   // This is given in the book:
 
@@ -142,13 +184,27 @@ object State {
   def random_int :Rand[Int] =  State (_.nextInt)
 
   // Exercise 10
+  // Implement a function state2stream that given a state object and an initial state,
+  // produces a stream of values generated by this State object (this automaton).
+  def state2stream[S,A] (s :State[S,A]) (seed: S) :Stream[A] = {
+    def loop(s: State[S, A], seed: S): Stream[A] = {
+      val (a, s2) = s.run(seed)
+      a #:: loop(s, s2)
+    }
+    loop(s, seed)
+  }
 
-  def state2stream[S,A] (s :State[S,A]) (seed :S) :Stream[A] = ???
+  // !!! BETTER IMPLEMENTATION
+  // def state2stream[S,A] (s :State[S,A]) (seed :S) :Stream[A] = {
+  //   val (x,y) = s.run(seed)
+  //   Stream.cons(x, state2stream(s)(y))
+  // }
 
   // Exercise 11 (lazy is added so that the class does not crash at load time
   // before you provide an implementation).
-
-  lazy val random_integers = ???
+  // Use state2stream to generate a lazy stream of integer numbers. Finally, obtain a
+  // finite list of 10 random values from this stream.
+  lazy val random_integers: Stream[Int] = state2stream(State.random_int)(RNG.SimpleRNG(42))
 
 }
 
