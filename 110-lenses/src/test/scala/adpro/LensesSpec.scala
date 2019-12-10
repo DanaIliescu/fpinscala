@@ -36,34 +36,34 @@ import Matchers._
 
 
     def PutGet[C, A](l: Lens[C, A])(implicit aA: Arbitrary[A], aC: Arbitrary[C]):Prop =
-    //below is a dumb property you can start with
-   forAll((n: Int) => n + 0 == n)
+      forAll{(c: C, a: A) => l.get(l.set(a)(c)) == a}
+    // below is a dumb property you can start with
+    // forAll((n: Int) => n + 0 == n)
 
+    def GetPut[C,A](l: Lens[C, A])(implicit aA: Arbitrary[A], aC: Arbitrary[C]):Prop =
+      forAll{(c: C, a: A) => l.set(l.get(c))(c) == c}
 
-
-
-    // def GetPut[C,A] ... TODO
-
-    // def PutPut[C,A] ... TODO
+    def PutPut[C,A](l: Lens[C, A])(implicit aA: Arbitrary[A], aC: Arbitrary[C]):Prop =
+      forAll{(c: C, a1: A, a2: A) => l.set(a2)(l.set(a1)(c)) == l.set(a2)(c)}
 
     // specification of a total lense laws (refers to the laws above)
-    // def wellBehavedTotalLense[A,C] (l: Lens[C,A])
-    //   (implicit ac: Arbitrary[C], aa: Arbitrary[A]) = {
-    //   it should "obey the PutGet law" in check { PutGet (l) }
-    //   it should "obey the GetPut law" in check { GetPut (l) }
-    // }
+    def wellBehavedTotalLense[A,C] (l: Lens[C,A])
+      (implicit ac: Arbitrary[C], aa: Arbitrary[A]) = {
+      it should "obey the PutGet law" in check { PutGet (l) }
+      it should "obey the GetPut law" in check { GetPut (l) }
+    }
 
-    // def veryWellBehavedTotalLense[A,C] (l: Lens[C,A])
-    //   (implicit aC: Arbitrary[C], aA: Arbitrary[A]) = {
-    //     it should behave like wellBehavedTotalLense (l)
-    //     it should "obey the PutPut law" in check { PutPut (l) }
-    // }
+    def veryWellBehavedTotalLense[A,C] (l: Lens[C,A])
+      (implicit aC: Arbitrary[C], aA: Arbitrary[A]) = {
+        it should behave like wellBehavedTotalLense (l)
+        it should "obey the PutPut law" in check { PutPut (l) }
+    }
     //
     // Calling above tests for l1 l2 and l3 (just uncomment and run)
 
-    // "l1" should behave like wellBehavedTotalLense (l1) // will fail GetPut see p. 6
-    // "l2" should behave like wellBehavedTotalLense (l2) // will fail PutGet see p. 6
-    // "l3" should behave like wellBehavedTotalLense (l3)
+    "l1" should behave like wellBehavedTotalLense (l1) // will fail GetPut see p. 6
+    "l2" should behave like wellBehavedTotalLense (l2) // will fail PutGet see p. 6
+    "l3" should behave like wellBehavedTotalLense (l3)
     // // it should behave like veryWellBehavedTotalLense (l3)
 
     // The four codiag lines ufnortunately do not work with scalacheck 0.14
@@ -80,23 +80,23 @@ import Matchers._
 
     // Tests for Exercise 4 (uncomment)
 
-    // "itu" should "show Alex at zipcode 2800" in
-    // { assertResult(itu.students("Alex").zipcode) ("2800") }
+    "itu" should "show Alex at zipcode 2800" in
+    { assertResult(itu.students("Alex").zipcode) ("2800") }
 
-    // "itu1" should "show Alex at zipcode 9100" in
-    // { assertResult(itu1.students("Alex").zipcode) ("9100") }
+    "itu1" should "show Alex at zipcode 9100" in
+    { assertResult(itu1.students("Alex").zipcode) ("9100") }
 
 
     // Test for Exercise 5 (uncomment as needed)
 
-    // "itu2" should "show Alex at zipcode 9100" in
-    // { assertResult(itu2.students("Alex").zipcode) ("9100") }
+    "itu2" should "show Alex at zipcode 9100" in
+    { assertResult(itu2.students("Alex").zipcode) ("9100") }
 
 
     // Test for Exercise 6 (uncomment as needed)
 
-    // "itu3" should "have all the countries in upper case" in
-    // { assert (itu3.students.values.map(_.country).forall (s => s.toUpperCase == s)) }
+    "itu3" should "have all the countries in upper case" in
+    { assert (itu3.students.values.map(_.country).forall (s => s.toUpperCase == s)) }
 
 
     // Tests for Exercise 8 (to be completed as Exercise 9)
@@ -111,28 +111,31 @@ import Matchers._
     // Optionals l are l.getOption and l.set (unlike for lenses, where these where
     // l.get and l.set).
 
-    // def PartialPutGet[C,A] (l: Optional[C,A]) = ...
+    def PartialPutGet[C, A](l: Optional[C, A]) (implicit aA: Arbitrary[A], aC: Arbitrary[C]): Prop =
+      forAll { (a: A, c: C) => l.getOption(l.set(a)(c)).forall( _ == a) }
 
-    // def PartialGetPut[C,A] = ...
+    def PartialGetPut[C, A](l: Optional[C, A]) (implicit aA: Arbitrary[A], aC: Arbitrary[C]): Prop =
+      forAll { c: C => l.getOption(c).forall(l.set(_)(c) == c ) }
 
-    // def PartialPutPut[C,A] = ...
+    def PartialPutPut[C, A](l: Optional[C, A]) (implicit aA: Arbitrary[A], aC: Arbitrary[C]): Prop =
+      forAll { (a: A, c: C) => l.set(a)(l.set(a)(c)) == l.set(a)(c) }
 
     // specification of Optional laws (uncomment)
     //
-    // def wellBehavedPartialLense[A,C] (l: Optional[C,A])
-    //   (implicit ac: Arbitrary[C], aa: Arbitrary[A]) = {
-    //   it should "obey the PartialPutGet law" in check { PartialPutGet (l) }
-    //   it should "obey the PartialGetPut law" in check { PartialGetPut (l) }
-    // }
+    def wellBehavedPartialLense[A,C] (l: Optional[C,A])
+      (implicit ac: Arbitrary[C], aa: Arbitrary[A]) = {
+      it should "obey the PartialPutGet law" in check { PartialPutGet (l) }
+      it should "obey the PartialGetPut law" in check { PartialGetPut (l) }
+    }
 
-    // def veryWellBehavedPartialLense[A,C] (l: Optional[C,A])
-    //   (implicit aC: Arbitrary[C], aA: Arbitrary[A]) = {
-    //     it should behave like wellBehavedPartialLense (l)
-    //     it should "obey the PartialPutPut law" in check { PartialPutPut (l) }
-    // }
+    def veryWellBehavedPartialLense[A,C] (l: Optional[C,A])
+      (implicit aC: Arbitrary[C], aA: Arbitrary[A]) = {
+        it should behave like wellBehavedPartialLense (l)
+        it should "obey the PartialPutPut law" in check { PartialPutPut (l) }
+    }
 
-    //  "setIth" should behave like veryWellBehavedPartialLense (setIth[Int](5))
-    //  "setIth1" should behave like veryWellBehavedTotalLense (setIth1[Int](5,-1)) // fails GetPut as expected
+     "setIth" should behave like veryWellBehavedPartialLense (setIth[Int](5))
+     "setIth1" should behave like veryWellBehavedTotalLense (setIth1[Int](5,-1)) // fails GetPut as expected
   }
 
 
@@ -148,19 +151,19 @@ import Matchers._
 // Find the laws for Optionals here:
 // https://github.com/julien-truffaut/Monocle/blob/master/core/src/main/scala/monocle/law/OptionalLaws.scala
 
-// import org.typelevel.discipline.scalatest.Discipline
-//
-// class LensesSuite extends FunSuite with Discipline {
-//
-//   import scalaz._
-//   import Scalaz._
-//
-//   checkAll("codiag[Int]", monocle.law.discipline.LensTests(codiag[Int]))
-//   checkAll("l1", monocle.law.discipline.LensTests(l1))
-//   checkAll("l2", monocle.law.discipline.LensTests(l2))
-//   checkAll("l3", monocle.law.discipline.LensTests(l3))
-//
-//   checkAll("setIth", monocle.law.discipline.OptionalTests(setIth[Int] (5)))
-//   checkAll("setIth1", monocle.law.discipline.LensTests(setIth1[Int] (13,-1)))
-//
-// }
+import org.typelevel.discipline.scalatest.Discipline
+
+class LensesSuite extends FunSuite with Discipline {
+
+  import scalaz._
+  import Scalaz._
+
+  // checkAll("codiag[Int]", monocle.law.discipline.LensTests(codiag[Int]))
+  checkAll("l1", monocle.law.discipline.LensTests(l1))
+  checkAll("l2", monocle.law.discipline.LensTests(l2))
+  checkAll("l3", monocle.law.discipline.LensTests(l3))
+
+  checkAll("setIth", monocle.law.discipline.OptionalTests(setIth[Int] (5)))
+  checkAll("setIth1", monocle.law.discipline.LensTests(setIth1[Int] (13,-1)))
+
+}

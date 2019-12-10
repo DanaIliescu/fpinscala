@@ -89,7 +89,7 @@ object Exercises {
   //
   // Flip (probability: Double): Element[Boolean]
 
-  def pick (n: Int): Element[Boolean] = ???
+  def pick (n: Int): Element[Boolean] = Flip(1.0 / (n.toDouble + 1.0))
 
   // Exercise 2.
   //
@@ -104,7 +104,10 @@ object Exercises {
   // This constructor returns a distribution where the value 'a' has probability
   // '1'.
 
-  def move (player: Player, n: Int): Element[Player] = ???
+  def move (player: Player, n: Int): Element[Player] = for {
+    isRed <- pick(n)
+    winner <- if(isRed) Constant(player) else move(next(player), n - 1)
+  } yield winner
 
   // Exercise 3.
   //
@@ -120,14 +123,16 @@ object Exercises {
   // Importance.probability[A] (distribution: Element[A], value: A): Double
 
   // Probability that Paula wins given Paula starts (the total no of balls: BallsNo)
-  def probPaula: Double = ???
+  def probPaula: Double = Importance.probability(move(Paula, BallsNo - 1), Paula)
 
   // Probability that Paula wins given Peter starts (the total no of balls: BallsNo)
-  def probPeter: Double = ???
+  def probPeter: Double = Importance.probability(move(Peter, BallsNo - 1), Paula)
 
   // Which strategy is beter for Paula? What if BallsNo == 9?
   //
-  // Write your answer here in a comment: ___
+  // Write your answer here in a comment:
+  // If BallsNo == 8, it doesn't matter who starts (both have aprox. 0.5 chance of winning),
+  // but if BallsNo == 9, then Paula should start to increase her chances of winning.
 
 
   // Exercise 4.
@@ -163,12 +168,15 @@ object Exercises {
   // randomly using 'firstMover' and then returns the probability distribution
   // for a game played with BallsNo balls in the urn:
 
-  def gameResult: Element[Player] = ???
+  def gameResult: Element[Player] = for {
+    first <- firstMover
+    winner <- move(first, BallsNo - 1)
+  } yield winner
 
   // What is the probability that Paula wins with this uniform prior? Does it
   // agree with your intuition?
   //
-  // _____
+  // 0.5
 
   // Now we are going to make the observation that Paula wins. Use the observe
   // function on the gameResult.  See documentation:
@@ -178,7 +186,7 @@ object Exercises {
   // are not getting used to it :)
 
   lazy val gameWonByPaula = gameResult
-  // gameWonByPaula.observe (Paula)
+  gameWonByPaula.observe (Paula)
 
   // ^-- Uncomment this when everything above works
   // Keeping this commented allows the testsuite to work while you are not done
@@ -188,12 +196,12 @@ object Exercises {
   // performed under the condition that Paula has won.
 
   // Compute the probability that Paula has started
-  def probPaulaStarted: Double = ???
+  def probPaulaStarted: Double = Importance.probability(firstMover, Paula)
 
   // Does this probability depend on the number of balls in the urn in the
   // urn being even or odd? What if it is even? What if it is odd?
   //
-  // ____
+  // It depends on the number of balls. If it is odd then she has higher chances of starting, given she won.
 
 
 
@@ -210,7 +218,7 @@ object Exercises {
   // will observe that Player1 has won.  We will ask what is the probability
   // that the urn held an odd number of balls in the begining of the game.  We
   // expect this probability to be slightly higher than 50%, as player 1 winning
-  // makes as believe slightly that an odd number of balls are in the urn.
+  // makes us believe slightly that an odd number of balls are in the urn.
 
   // Let UpperBound will be the maximum number of balls in the urn that we
   // consider.
@@ -219,7 +227,6 @@ object Exercises {
 
   // Construct a uniform prior on the number of black balls in the urn
   // from zero to UpperBound-1.
-  //
   // Use the Uniform[A] constructor (a variadic function that takes all the
   // equally like values of A as its variable size argument list):
   //
@@ -227,21 +234,21 @@ object Exercises {
   //
   // The argument list can be generated using List.tabulate[A].
 
-  lazy val blackBallsNo: Element[Int] = ???
+  lazy val blackBallsNo: Element[Int] = Uniform(List.tabulate(UpperBound)(identity):_*)
 
   // Now convert the prior distribution on the initial number of black balls in
-  // the urn, into a distribution over the winning player.  Since the game is
+  // the urn, into a distribution over the winning player. Since the game is
   // entirely symmetric, we can assume that Paula is starting (the result for
   // Peter will be the same). Hint: flatMap
   //
   // There is no test for this step of the computation.
 
-  def outcome: Element[Player] = ???
+  def outcome: Element[Player] = blackBallsNo flatMap (n => move(Paula, n))
 
-  // Uncomment the following to assert that the chances of winning by Paul and
+  // Uncomment the following to assert that the chances of winning by Paula and
   // Peter are equal
 
-  // outcome observe (Paula)
+  outcome observe (Paula)
 
   // ^-- When you uncomment this, the test on blackBallsNo will fail. This is
   // expected, as no longer all values are equally likely.  The prior turns into
@@ -260,7 +267,17 @@ object Exercises {
   // This version returns the probability that the predicate p holds on the
   // values generated with 'distribution'.
 
-  lazy val posteriorOdd: Double = ???
+  lazy val posteriorOdd: Double = {
+    val dis = Uniform(List.tabulate(UpperBound)(x => x + 1):_*)
+    Importance.probability(dis, (x: Int) => x % 2 == 1)
+  }
+
+//   ALTERNATIVE SOLUTION
+//   lazy val posteriorOdd: Double = {
+//     val size = Uniform(List.tabulate(UpperBound)(_ + 1):_*)
+//     Importance.probability(size, isOdd: Int => Boolean)
+//   }
+
 
   // Is the posteriorOdd greater than 1/2?
 

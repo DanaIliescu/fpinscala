@@ -18,6 +18,7 @@ trait Parsers[ParseError, Parser[+_]] { self =>
   def run[A] (p: Parser[A]) (input: String): Either[ParseError,A]
   implicit def char (c: Char): Parser[Char]
   implicit def string(s: String): Parser[String]
+  implicit def int(i: Int): Parser[Int]
   implicit def operators[A] (p: Parser[A]): ParserOps[A] = ParserOps[A](p)
   def or[A] (s1: Parser[A], s2: =>Parser[A]): Parser[A]
   def listOfN[A] (n: Int, p: Parser[A]): Parser[List[A]]
@@ -77,28 +78,40 @@ trait Parsers[ParseError, Parser[+_]] { self =>
 
 
   // Exercise 1
-
-  // def manyA ...
+  // Write a type declaration for a parser manyA that recognizes zero or more ’a’ characters.
+  // For instances for "aa" the result should be Right(2), for "" and "cadabra" the result should be Right(0).
+  // #question
+  // def manyA(s: String): Either[ParseError,Int] = run(map (many (char ('a'))) ( _.size))(s)
+  def manyA: Parser[Int] = char('a').many.map(_.size)
 
   // Exercise 2
+  // Using product, implement the combinator map2 and then use this to implement many1 in terms of many.
+  def map2[A,B,C] (p: Parser[A], p2: Parser[B]) (f: (A,B) => C): Parser[C] = map(p.product(p2))((t:(A,B)) => f(t._1,t._2)) // map[(A,B),C]
 
-  def map2[A,B,C] (p: Parser[A], p2: Parser[B]) (f: (A,B) => C): Parser[C] = ???
+  def many1[A] (p: Parser[A]): Parser[List[A]] = map2(p,many(p))(_ :: _)
 
-  def many1[A] (p: Parser[A]): Parser[List[A]] = ???
 
   // Exercise 3
+  // Using flatMap write the parser that parses a single digit, and then as many occurrences of the character ’a’ as was the value of the digit.
+  // Your parser should be named digitTimesA and return the value of the digit parsed (thus one less the number of characters consumed).
+  // #question
+  def digitTimesA: Parser[Int] = "[0-9]+".r flatMap(digit => int(digit.toInt))
 
-  // def digitTimesA  ...
+  // def digitTimesA: Parser[Int] = for {
+  //   digit <- "[0-9]+".r
+  //   n <- digit.toInt
+  //   _ <- listOfN(n, char('a'))
+  // } yield n
 
   // Exercise 4
+  // Implement product and map2 in terms of flatMap.
+  def product_ [A,B](p: Parser[A], p2: => Parser[B]): Parser[(A,B)] = flatMap(p)(a => map(p2)(b => (a,b)))
 
-  // def product_[A,B] ...
-
-  // def map2_ ...
+  def map2_ [A,B,C] (p: Parser[A], p2: Parser[B]) (f: (A,B) => C): Parser[C] = flatMap(p)(a => map(p2)(b => f(a,b)))
 
   // Exercise 5
-
-  // def map_ ...
+  // Express map in terms of flatMap and/or other combinators (map is not primitive if you have flatMap).
+  def map_ [A,B] (p: Parser[A]) (f: A => B): Parser[B] = flatMap(p)(a => succeed(f(a)))
 
 }
 
